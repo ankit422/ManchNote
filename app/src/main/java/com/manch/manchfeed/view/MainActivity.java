@@ -1,7 +1,16 @@
 package com.manch.manchfeed.view;
 
 import android.content.DialogInterface;
+import android.content.Intent;
+import android.database.Cursor;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.media.ExifInterface;
+import android.net.Uri;
 import android.os.Bundle;
+import android.os.Environment;
+import android.provider.MediaStore;
 import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v7.app.AlertDialog;
@@ -13,7 +22,9 @@ import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.Button;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -23,11 +34,12 @@ import com.manch.manchfeed.database.model.Note;
 import com.manch.manchfeed.utils.MyDividerItemDecoration;
 import com.manch.manchfeed.utils.RecyclerTouchListener;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     private NotesAdapter mAdapter;
     private List<Note> notesList = new ArrayList<>();
     private CoordinatorLayout coordinatorLayout;
@@ -35,6 +47,13 @@ public class MainActivity extends AppCompatActivity {
     private TextView noNotesView;
 
     private DatabaseHelper db;
+    ImageView imgLogo;
+    protected static final int CAMERA_REQUEST = 0;
+    protected static final int GALLERY_PICTURE = 1;
+    private Intent pictureActionIntent = null;
+    Bitmap bitmap;
+    String selectedImagePath;
+    private Button cameraBtn, galleryBtn;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -77,6 +96,9 @@ public class MainActivity extends AppCompatActivity {
                 recyclerView, new RecyclerTouchListener.ClickListener() {
             @Override
             public void onClick(View view, final int position) {
+                Intent intent = new Intent(MainActivity.this, NoteDetails.class);
+                intent.putExtra("note_id", notesList.get(position).getId());
+                startActivity(intent);
             }
 
             @Override
@@ -89,6 +111,7 @@ public class MainActivity extends AppCompatActivity {
     /**
      * Inserting new note in db
      * and refreshing the list
+     *
      * @param note
      */
     private void createNote(HashMap<String, String> note) {
@@ -169,6 +192,18 @@ public class MainActivity extends AppCompatActivity {
         builder.show();
     }
 
+    private void ClickGallery() {
+        Intent pictureActionIntent = new Intent(Intent.ACTION_PICK,
+                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        startActivityForResult(pictureActionIntent, GALLERY_PICTURE);
+    }
+
+    private void ClickCamera() {
+        Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+        File f = new File(android.os.Environment.getExternalStorageDirectory(), "temp.jpg");
+        intent.putExtra(MediaStore.EXTRA_OUTPUT, Uri.fromFile(f));
+        startActivityForResult(intent, CAMERA_REQUEST);
+    }
 
     /**
      * Shows alert dialog with EditText options to enter / edit
@@ -186,6 +221,11 @@ public class MainActivity extends AppCompatActivity {
         final EditText inputNote = view.findViewById(R.id.note);
         final EditText inputNoteDescription = view.findViewById(R.id.note_description);
         TextView dialogTitle = view.findViewById(R.id.dialog_title);
+        cameraBtn = view.findViewById(R.id.camera_btn);
+        cameraBtn.setOnClickListener(this);
+        galleryBtn = view.findViewById(R.id.gallery_btn);
+        galleryBtn.setOnClickListener(this);
+        imgLogo = view.findViewById(R.id.img_logo);
         dialogTitle.setText(!shouldUpdate ? getString(R.string.lbl_new_note_title) : getString(R.string.lbl_edit_note_title));
 
         if (shouldUpdate && note != null) {
@@ -214,8 +254,10 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onClick(View v) {
                 // Show toast message when no text is entered
-                if (TextUtils.isEmpty(inputNote.getText().toString())) {
-                    Toast.makeText(MainActivity.this, "Enter note!", Toast.LENGTH_SHORT).show();
+                if (TextUtils.isEmpty(inputNote.getText().toString()) ||
+                        TextUtils.isEmpty(inputNoteDescription.getText().toString()) ||
+                        selectedImagePath == null || selectedImagePath.length() == 0) {
+                    Toast.makeText(MainActivity.this, "All fields are mandatory!", Toast.LENGTH_SHORT).show();
                     return;
                 } else {
                     alertDialog.dismiss();
@@ -224,7 +266,7 @@ public class MainActivity extends AppCompatActivity {
                 HashMap<String, String> map = new HashMap<>();
                 map.put("title", inputNote.getText().toString());
                 map.put("description", inputNoteDescription.getText().toString());
-                map.put("image", "123");
+                map.put("image", selectedImagePath);
                 // check if user updating note
                 if (shouldUpdate && note != null) {
                     // update note by it's id
@@ -247,6 +289,122 @@ public class MainActivity extends AppCompatActivity {
             noNotesView.setVisibility(View.GONE);
         } else {
             noNotesView.setVisibility(View.VISIBLE);
+        }
+    }
+
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+
+        super.onActivityResult(requestCode, resultCode, data);
+
+        bitmap = null;
+        selectedImagePath = null;
+
+        if (resultCode == RESULT_OK && requestCode == CAMERA_REQUEST) {
+
+            File f = new File(Environment.getExternalStorageDirectory()
+                    .toString());
+            for (File temp : f.listFiles()) {
+                if (temp.getName().equals("temp.jpg")) {
+                    f = temp;
+                    break;
+                }
+            }
+
+            if (!f.exists()) {
+
+                Toast.makeText(getBaseContext(),
+
+                        "Error while capturing image", Toast.LENGTH_LONG)
+
+                        .show();
+
+                return;
+
+            }
+
+            try {
+                selectedImagePath = f.getAbsolutePath();
+                bitmap = BitmapFactory.decodeFile(selectedImagePath);
+
+                bitmap = Bitmap.createScaledBitmap(bitmap, 400, 400, true);
+
+                int rotate = 0;
+                try {
+                    ExifInterface exif = new ExifInterface(f.getAbsolutePath());
+                    int orientation = exif.getAttributeInt(
+                            ExifInterface.TAG_ORIENTATION,
+                            ExifInterface.ORIENTATION_NORMAL);
+
+                    switch (orientation) {
+                        case ExifInterface.ORIENTATION_ROTATE_270:
+                            rotate = 270;
+                            break;
+                        case ExifInterface.ORIENTATION_ROTATE_180:
+                            rotate = 180;
+                            break;
+                        case ExifInterface.ORIENTATION_ROTATE_90:
+                            rotate = 90;
+                            break;
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                Matrix matrix = new Matrix();
+                matrix.postRotate(rotate);
+                bitmap = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(),
+                        bitmap.getHeight(), matrix, true);
+
+
+                imgLogo.setImageBitmap(bitmap);
+                imgLogo.setVisibility(View.VISIBLE);
+                //storeImageTosdCard(bitmap);
+            } catch (Exception e) {
+                // TODO Auto-generated catch block
+                e.printStackTrace();
+            }
+
+        } else if (resultCode == RESULT_OK && requestCode == GALLERY_PICTURE) {
+            if (data != null) {
+
+                Uri selectedImage = data.getData();
+                String[] filePath = {MediaStore.Images.Media.DATA};
+                Cursor c = getContentResolver().query(selectedImage, filePath,
+                        null, null, null);
+                c.moveToFirst();
+                int columnIndex = c.getColumnIndex(filePath[0]);
+                selectedImagePath = c.getString(columnIndex);
+                c.close();
+
+                if (selectedImagePath != null) {
+//                    txt_image_path.setText(selectedImagePath);
+                }
+
+                bitmap = BitmapFactory.decodeFile(selectedImagePath); // load
+                // preview image
+                bitmap = Bitmap.createScaledBitmap(bitmap, 400, 400, false);
+
+
+                imgLogo.setImageBitmap(bitmap);
+                imgLogo.setVisibility(View.VISIBLE);
+
+            } else {
+                Toast.makeText(getApplicationContext(), "Cancelled",
+                        Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    @Override
+    public void onClick(View view) {
+        switch (view.getId()) {
+            case R.id.camera_btn:
+                ClickCamera();
+                break;
+            case R.id.gallery_btn:
+                ClickGallery();
+                break;
         }
     }
 }

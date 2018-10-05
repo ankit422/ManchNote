@@ -5,15 +5,19 @@ package com.manch.manchfeed.view;
  */
 
 import android.content.Context;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.support.v7.widget.RecyclerView;
 import android.text.Html;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.TextView;
 
 import com.manch.manchfeed.R;
 import com.manch.manchfeed.database.model.Note;
+import com.manch.manchfeed.utils.Utilities;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -25,11 +29,13 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.MyViewHolder
 
     private Context context;
     private List<Note> notesList;
+    Utilities utilities = new Utilities();
 
     public class MyViewHolder extends RecyclerView.ViewHolder {
         public TextView note, noteDescription;
         public TextView dot;
         public TextView timestamp;
+        public ImageView noteImage;
 
         public MyViewHolder(View view) {
             super(view);
@@ -37,6 +43,7 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.MyViewHolder
             noteDescription = view.findViewById(R.id.note_description);
             dot = view.findViewById(R.id.dot);
             timestamp = view.findViewById(R.id.timestamp);
+            noteImage = view.findViewById(R.id.note_image);
         }
     }
 
@@ -61,33 +68,19 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.MyViewHolder
         holder.note.setText(note.getNote());
         holder.noteDescription.setText(note.getNoteDescription());
 
+        Bitmap bitmap = BitmapFactory.decodeFile(note.getNoteImage());
+        bitmap = Bitmap.createScaledBitmap(bitmap, 400, 400, false);
+        holder.noteImage.setImageBitmap(bitmap);
+
         // Displaying dot from HTML character code
         holder.dot.setText(Html.fromHtml("&#8226;"));
 
         // Formatting and displaying timestamp
-        holder.timestamp.setText(formatDate(note.getTimestamp()));
+        holder.timestamp.setText(utilities.formatDate(note.getTimestamp()));
     }
 
     @Override
     public int getItemCount() {
         return notesList.size();
-    }
-
-    /**
-     * Formatting timestamp to `MMM d` format
-     * Input: 2018-02-21 00:15:42
-     * Output: Feb 21
-     */
-    private String formatDate(String dateStr) {
-        try {
-            SimpleDateFormat fmt = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
-            Date date = fmt.parse(dateStr);
-            SimpleDateFormat fmtOut = new SimpleDateFormat("MMM d");
-            return fmtOut.format(date);
-        } catch (ParseException e) {
-
-        }
-
-        return "";
     }
 }
