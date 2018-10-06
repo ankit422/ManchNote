@@ -1,9 +1,5 @@
 package com.manch.manchfeed.view;
 
-/**
- * Created by ravi on 20/02/18.
- */
-
 import android.content.Context;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -19,9 +15,6 @@ import com.manch.manchfeed.R;
 import com.manch.manchfeed.database.model.Note;
 import com.manch.manchfeed.utils.Utilities;
 
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
 
 
@@ -68,9 +61,13 @@ public class NotesAdapter extends RecyclerView.Adapter<NotesAdapter.MyViewHolder
         holder.note.setText(note.getNote());
         holder.noteDescription.setText(note.getNoteDescription());
 
-        Bitmap bitmap = BitmapFactory.decodeFile(note.getNoteImage());
-        bitmap = Bitmap.createScaledBitmap(bitmap, 400, 400, false);
-        holder.noteImage.setImageBitmap(bitmap);
+        try {
+            Bitmap bitmap = BitmapFactory.decodeFile(note.getNoteImage());
+            bitmap = Bitmap.createScaledBitmap(bitmap, 400, 400, false);
+            holder.noteImage.setImageBitmap(bitmap);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         // Displaying dot from HTML character code
         holder.dot.setText(Html.fromHtml("&#8226;"));

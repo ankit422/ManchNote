@@ -26,9 +26,6 @@ public class NoteDetails extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.note_detail_view);
 
-//        Toolbar toolbar = (Toolbar) findViewById(R.id.toolbar);
-//        setSupportActionBar(toolbar);
-
         noteTitle = findViewById(R.id.note);
         noteDescription = findViewById(R.id.note_description);
         timestamp = findViewById(R.id.timestamp);

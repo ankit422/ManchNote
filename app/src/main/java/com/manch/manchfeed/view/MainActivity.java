@@ -1,13 +1,17 @@
 package com.manch.manchfeed.view;
 
+import android.Manifest;
+import android.annotation.TargetApi;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Matrix;
 import android.media.ExifInterface;
 import android.net.Uri;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.provider.MediaStore;
@@ -54,6 +58,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     Bitmap bitmap;
     String selectedImagePath;
     private Button cameraBtn, galleryBtn;
+    private ArrayList<String> permissionsToRequest;
+    private ArrayList<String> permissionsRejected = new ArrayList();
+    private ArrayList<String> permissions = new ArrayList();
+    private final static int ALL_PERMISSIONS_RESULT = 107;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -68,13 +77,14 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
         db = new DatabaseHelper(this);
 
+
         notesList.addAll(db.getAllNotes());
 
         FloatingActionButton fab = (FloatingActionButton) findViewById(R.id.fab);
         fab.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                showNoteDialog(false, null, -1);
+                AskPermissions();
             }
         });
 
@@ -106,6 +116,23 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 showActionsDialog(position);
             }
         }));
+    }
+
+    private void AskPermissions() {
+        permissions.add(Manifest.permission.CAMERA);
+        permissions.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
+        permissionsToRequest = findUnAskedPermissions(permissions);
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+
+
+            if (permissionsToRequest.size() > 0) {
+                requestPermissions(permissionsToRequest.toArray(new String[permissionsToRequest.size()]), ALL_PERMISSIONS_RESULT);
+            } else {
+                showNoteDialog(false, null, -1);
+            }
+        }
+
     }
 
     /**
@@ -141,8 +168,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         Note n = notesList.get(position);
         // updating note text
         n.setNote(note.get("title"));
-        n.setNoteImage(note.get("description"));
-        n.setNoteDescription(note.get("image"));
+        n.setNoteDescription(note.get("description"));
+        n.setNoteImage(note.get("image"));
 
         // updating note in db
         db.updateNote(n);
@@ -195,6 +222,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     private void ClickGallery() {
         Intent pictureActionIntent = new Intent(Intent.ACTION_PICK,
                 android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI);
+        pictureActionIntent.putExtra(Intent.EXTRA_LOCAL_ONLY, true);
         startActivityForResult(pictureActionIntent, GALLERY_PICTURE);
     }
 
@@ -231,6 +259,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         if (shouldUpdate && note != null) {
             inputNote.setText(note.getNote());
             inputNoteDescription.setText(note.getNoteDescription());
+            selectedImagePath = note.getNoteImage();
+            bitmap = BitmapFactory.decodeFile(selectedImagePath);
+            bitmap = Bitmap.createScaledBitmap(bitmap, 400, 400, false);
+            imgLogo.setImageBitmap(bitmap);
+            imgLogo.setVisibility(View.VISIBLE);
         }
 
         alertDialogBuilderUserInput
@@ -406,5 +439,86 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 ClickGallery();
                 break;
         }
+    }
+
+    private ArrayList<String> findUnAskedPermissions(ArrayList<String> wanted) {
+        ArrayList<String> result = new ArrayList();
+
+        for (String perm : wanted) {
+            if (!hasPermission(perm)) {
+                result.add(perm);
+            }
+        }
+
+        return result;
+    }
+
+    private boolean hasPermission(String permission) {
+        if (canMakeSmores()) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                return (checkSelfPermission(permission) == PackageManager.PERMISSION_GRANTED);
+            }
+        }
+        return true;
+    }
+
+    private boolean canMakeSmores() {
+        return (Build.VERSION.SDK_INT > Build.VERSION_CODES.LOLLIPOP_MR1);
+    }
+
+    private void showMessageOKCancel(String message, DialogInterface.OnClickListener okListener) {
+        new AlertDialog.Builder(this)
+                .setMessage(message)
+                .setPositiveButton("OK", okListener)
+                .setNegativeButton("Cancel", null)
+                .create()
+                .show();
+    }
+
+
+    @TargetApi(Build.VERSION_CODES.M)
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+
+        switch (requestCode) {
+
+            case ALL_PERMISSIONS_RESULT:
+                for (String perms : permissionsToRequest) {
+                    if (hasPermission(perms)) {
+
+                    } else {
+
+                        permissionsRejected.add(perms);
+                    }
+                }
+
+                if (permissionsRejected.size() > 0) {
+
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                        if (shouldShowRequestPermissionRationale(permissionsRejected.get(0))) {
+                            showMessageOKCancel("These permissions are mandatory for the application. Please allow access.",
+                                    new DialogInterface.OnClickListener() {
+                                        @Override
+                                        public void onClick(DialogInterface dialog, int which) {
+                                            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+
+                                                //Log.d("API123", "permisionrejected " + permissionsRejected.size());
+
+                                                requestPermissions(permissionsRejected.toArray(new String[permissionsRejected.size()]), ALL_PERMISSIONS_RESULT);
+                                            }
+                                        }
+                                    });
+                            return;
+                        }
+                    }
+
+                } else {
+                    showNoteDialog(false, null, -1);
+                }
+
+                break;
+        }
+
     }
 }

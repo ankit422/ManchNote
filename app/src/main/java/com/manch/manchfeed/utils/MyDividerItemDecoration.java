@@ -1,9 +1,5 @@
 package com.manch.manchfeed.utils;
 
-/**
- * Created by ravi on 18/01/18.
- */
-
 import android.content.Context;
 import android.content.res.Resources;
 import android.content.res.TypedArray;

@@ -34,8 +34,10 @@
         android:layout_height="wrap_content"
         android:layout_below="@id/timestamp"
         android:layout_toRightOf="@id/dot"
+        android:ellipsize="end"
+        android:maxLines="2"
         android:textColor="@color/note_list_text"
-        android:textSize="@dimen/note_list_text" />
+        android:textSize="@dimen/note_list_title" />
 
     <ImageView
         android:id="@+id/note_image"
@@ -53,6 +55,9 @@
         android:layout_below="@id/note_image"
         android:layout_marginTop="5dp"
         android:layout_toRightOf="@id/dot"
+        android:alpha="0.8"
+        android:ellipsize="end"
+        android:maxLines="2"
         android:textColor="@color/note_list_text"
         android:textSize="@dimen/note_list_text" />
 
